@@ -1,20 +1,28 @@
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 
-use entropy_beacon_cosmos::beacon::CalculateFeeQuery;
+use cw_storage_plus::{Item, Map};
+use cw_utils::one_coin;
 use entropy_beacon_cosmos::EntropyRequest;
+use kujira::denom::Denom;
 
 use crate::error::ContractError;
 use crate::msg::{EntropyCallbackData, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{State, STATE};
 
-// version info for migration info
-const CONTRACT_NAME: &str = "entropiclabs/example-entropy-consumer";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+#[cw_serde]
+struct Game {
+    player: Addr,
+    result: Option<[u8; 3]>,
+}
+
+const GAME: Map<u128, Game> = Map::new("game");
+const IDX: Item<Uint128> = Item::new("idx");
 
 /// Our [`InstantiateMsg`] contains the address of the entropy beacon contract.
 /// We save this address in the contract state.
@@ -27,10 +35,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let state = State {
         entropy_beacon_addr: msg.entropy_beacon_addr,
+        token: msg.token,
+        play_amount: msg.play_amount,
+        win_amount: msg.win_amount,
     };
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
-
+    IDX.save(deps.storage, &Uint128::zero())?;
     Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
@@ -43,41 +53,31 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         // Here we handle requesting entropy from the beacon.
-        ExecuteMsg::Coinflip {} => {
+        ExecuteMsg::Pull {} => {
             let state = STATE.load(deps.storage)?;
-            let beacon_addr = state.entropy_beacon_addr;
-            // Note: In production you should check the denomination of the funds to make sure it matches the native token of the chain.
-            let sent_amount: Uint128 = info.funds.iter().map(|c| c.amount).sum();
-
-            // How much gas our callback will use. This is an educated guess, so we usually want to overestimate.
-            // IF YOU ARE USING THIS CONTRACT AS A TEMPLATE, YOU SHOULD CHANGE THIS VALUE TO MATCH YOUR CONTRACT.
-            // If you set this too low, your contract will fail when receiving entropy, and the request will NOT be retried.
-            let callback_gas_limit = 100_000u64;
-
-            // The beacon allows us to query the fee it will charge for a request, given the gas limit we provide.
-            let beacon_fee =
-                CalculateFeeQuery::query(deps.as_ref(), callback_gas_limit, beacon_addr.clone())?;
-
-            // Check if the user sent enough funds to cover the fee.
-            if sent_amount < Uint128::from(beacon_fee) {
+            let coin = one_coin(&info)?;
+            if Denom::from(coin.denom) != state.token || coin.amount != state.play_amount {
                 return Err(ContractError::InsufficientFunds {});
             }
+            let idx = IDX.load(deps.storage)?;
+            let game = Game {
+                player: info.sender.clone(),
+                result: None,
+            };
+            GAME.save(deps.storage, idx.u128(), &game)?;
+            IDX.save(deps.storage, &(idx + Uint128::one()))?;
 
             Ok(Response::new().add_message(
                 EntropyRequest {
-                    callback_gas_limit,
+                    callback_gas_limit: 100_000u64,
                     callback_address: env.contract.address,
-                    funds: vec![Coin {
-                        denom: "uluna".to_string(), // Change this to match your chain's native token.
-                        amount: Uint128::from(beacon_fee),
-                    }],
-                    // A custom struct and data we define for callback info.
-                    // If you are using this contract as a template, you should change this to match the information your contract needs.
+                    funds: vec![],
                     callback_msg: EntropyCallbackData {
                         original_sender: info.sender,
+                        game: idx,
                     },
                 }
-                .into_cosmos(beacon_addr)?,
+                .into_cosmos(state.entropy_beacon_addr)?,
             ))
         }
         // Here we handle receiving entropy from the beacon.
@@ -98,7 +98,7 @@ pub fn execute(
             let entropy = data.entropy;
             // We can parse out our custom callback data from the message.
             let callback_data = data.msg;
-            let callback_data = from_binary::<EntropyCallbackData>(&callback_data)?;
+            let callback_data: EntropyCallbackData = from_binary(&callback_data)?;
             let mut response = Response::new();
 
             response =

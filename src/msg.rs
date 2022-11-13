@@ -1,30 +1,30 @@
-use cosmwasm_std::Addr;
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Uint128};
 use entropy_beacon_cosmos::EntropyCallbackMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use kujira::denom::Denom;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub entropy_beacon_addr: Addr,
+    pub token: Denom,
+    pub play_amount: Uint128,
+    pub win_amount: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct EntropyCallbackData {
+    pub game: Uint128,
     pub original_sender: Addr,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
-    Coinflip {},
+    Pull {},
     ReceiveEntropy(EntropyCallbackMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum QueryMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct MigrateMsg {}
