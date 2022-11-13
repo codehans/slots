@@ -1,4 +1,4 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use entropy_beacon_cosmos::EntropyCallbackMsg;
 use kujira::denom::Denom;
@@ -24,7 +24,19 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub enum QueryMsg {}
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(GameResponse)]
+    Game { idx: Uint128 },
+}
+
+#[cw_serde]
+pub struct GameResponse {
+    pub idx: Uint128,
+    pub player: Addr,
+    pub result: Option<Vec<u8>>,
+    pub win: bool,
+}
 
 #[cw_serde]
 pub struct MigrateMsg {}

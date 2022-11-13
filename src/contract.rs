@@ -2,9 +2,9 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, Uint128,
 };
-use cw2::set_contract_version;
 
 use cw_storage_plus::{Item, Map};
 use cw_utils::one_coin;
@@ -12,13 +12,22 @@ use entropy_beacon_cosmos::EntropyRequest;
 use kujira::denom::Denom;
 
 use crate::error::ContractError;
-use crate::msg::{EntropyCallbackData, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{EntropyCallbackData, ExecuteMsg, GameResponse, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
 
 #[cw_serde]
 struct Game {
     player: Addr,
     result: Option<[u8; 3]>,
+}
+
+impl Game {
+    pub fn win(&self) -> bool {
+        match self.result {
+            None => false,
+            Some(xs) => xs[0] / 16 == xs[1] / 16 && xs[1] / 16 == xs[2] / 16,
+        }
+    }
 }
 
 const GAME: Map<u128, Game> = Map::new("game");
@@ -99,29 +108,39 @@ pub fn execute(
             // We can parse out our custom callback data from the message.
             let callback_data = data.msg;
             let callback_data: EntropyCallbackData = from_binary(&callback_data)?;
-            let mut response = Response::new();
+            let mut game = GAME.load(deps.storage, callback_data.game.u128())?;
+            game.result = Some([entropy[0], entropy[1], entropy[2]]);
 
-            response =
-                response.add_attribute("flip_original_caller", callback_data.original_sender);
-
-            // Now we can do whatever we want with the entropy as a randomness source!
-            // We can seed a PRNG with the entropy, but here, we just check for even and odd:
-            if entropy.last().unwrap() % 2 == 0 {
-                response = response.add_attribute("flip_result", "heads");
+            if game.win() {
+                Ok(Response::default()
+                    .add_message(CosmosMsg::Bank(BankMsg::Send {
+                        to_address: game.player.to_string(),
+                        amount: state.token.coins(&state.win_amount),
+                    }))
+                    .add_attribute("game", callback_data.game)
+                    .add_attribute("player", game.player)
+                    .add_attribute("result", "win"))
             } else {
-                response = response.add_attribute("flip_result", "tails");
+                Ok(Response::default()
+                    .add_attribute("game", callback_data.game)
+                    .add_attribute("player", game.player)
+                    .add_attribute("result", "lose"))
             }
-            Ok(response)
         }
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("action", "migrate"))
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Game { idx } => {
+            let game = GAME.load(deps.storage, idx.u128())?;
+            to_binary(&GameResponse {
+                idx,
+                player: game.player.clone(),
+                result: game.result.map(|x| x.into()),
+                win: game.win(),
+            })
+        }
+    }
 }
