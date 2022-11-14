@@ -398,23 +398,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "entropy_example_contract"
-version = "1.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.16.0",
- "cw2 0.13.4",
- "entropy_beacon_cosmos",
- "kujira",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -527,6 +510,23 @@ dependencies = [
  "schemars",
  "serde",
  "sha2 0.9.9",
+ "thiserror",
+]
+
+[[package]]
+name = "kujira-slots"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.16.0",
+ "cw2 0.13.4",
+ "entropy_beacon_cosmos",
+ "kujira",
+ "schemars",
+ "serde",
  "thiserror",
 ]
 

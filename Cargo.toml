@@ -1,12 +1,8 @@
 [package]
-name = "entropy_example_contract"
-version = "1.0.0"
-authors = ["Amit Prasad <mail@amitprasad.dev>"]
+name = "kujira-slots"
+version = "0.1.0"
+authors = ["codehans <94654388+codehans@users.noreply.github.com>"]
 edition = "2021"
-repository = "https://github.com/EntropicLabs/entropy_example_contract"
-description = "Entropy Example Contract"
-license = "Apache-2.0"
-readme = "README.md"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -39,7 +35,7 @@ optimize = """docker run --rm -v "$(pwd)":/code \
   -v "$(readlink -f ../../packages)":/packages \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.5
+  cosmwasm/rust-optimizer-arm64:0.12.6
 """
 
 [dependencies]
