@@ -76,18 +76,21 @@ pub fn execute(
             GAME.save(deps.storage, idx.u128(), &game)?;
             IDX.save(deps.storage, &(idx + Uint128::one()))?;
 
-            Ok(Response::new().add_message(
-                EntropyRequest {
-                    callback_gas_limit: 100_000u64,
-                    callback_address: env.contract.address,
-                    funds: vec![],
-                    callback_msg: EntropyCallbackData {
-                        original_sender: info.sender,
-                        game: idx,
-                    },
-                }
-                .into_cosmos(state.entropy_beacon_addr)?,
-            ))
+            Ok(Response::new()
+                .add_attribute("game", idx)
+                .add_attribute("player", game.player)
+                .add_message(
+                    EntropyRequest {
+                        callback_gas_limit: 100_000u64,
+                        callback_address: env.contract.address,
+                        funds: vec![],
+                        callback_msg: EntropyCallbackData {
+                            original_sender: info.sender,
+                            game: idx,
+                        },
+                    }
+                    .into_cosmos(state.entropy_beacon_addr)?,
+                ))
         }
         // Here we handle receiving entropy from the beacon.
         ExecuteMsg::ReceiveEntropy(data) => {
