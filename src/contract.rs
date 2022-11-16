@@ -121,6 +121,7 @@ pub fn execute(
             let callback_data: EntropyCallbackData = from_binary(&callback_data)?;
             let mut game = GAME.load(deps.storage, callback_data.game.u128())?;
             game.result = Some([entropy[0], entropy[1], entropy[2]]);
+            GAME.save(deps.storage, callback_data.game.u128(), &game)?;
 
             if game.win() {
                 Ok(Response::default()
