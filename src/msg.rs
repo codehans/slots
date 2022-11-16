@@ -9,6 +9,8 @@ pub struct InstantiateMsg {
     pub token: Denom,
     pub play_amount: Uint128,
     pub win_amount: Uint128,
+    #[serde(default)]
+    pub fee_amount: Uint128,
 }
 
 #[cw_serde]
@@ -39,4 +41,6 @@ pub struct GameResponse {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub fee_amount: Uint128,
+}

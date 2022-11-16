@@ -10,6 +10,7 @@ pub struct State {
     pub token: Denom,
     pub play_amount: Uint128,
     pub win_amount: Uint128,
+    pub fee_amount: Uint128,
 }
 
 pub const STATE: Item<State> = Item::new("state");

@@ -47,6 +47,7 @@ pub fn instantiate(
         token: msg.token,
         play_amount: msg.play_amount,
         win_amount: msg.win_amount,
+        fee_amount: msg.fee_amount,
     };
     STATE.save(deps.storage, &state)?;
     IDX.save(deps.storage, &Uint128::zero())?;
@@ -76,21 +77,28 @@ pub fn execute(
             GAME.save(deps.storage, idx.u128(), &game)?;
             IDX.save(deps.storage, &(idx + Uint128::one()))?;
 
+            let mut msgs = vec![EntropyRequest {
+                callback_gas_limit: 100_000u64,
+                callback_address: env.contract.address,
+                funds: vec![],
+                callback_msg: EntropyCallbackData {
+                    original_sender: info.sender,
+                    game: idx,
+                },
+            }
+            .into_cosmos(state.entropy_beacon_addr)?];
+
+            if !state.fee_amount.is_zero() {
+                msgs.push(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: kujira::utils::fee_address().to_string(),
+                    amount: state.token.coins(&state.fee_amount),
+                }))
+            };
+
             Ok(Response::new()
                 .add_attribute("game", idx)
                 .add_attribute("player", game.player)
-                .add_message(
-                    EntropyRequest {
-                        callback_gas_limit: 100_000u64,
-                        callback_address: env.contract.address,
-                        funds: vec![],
-                        callback_msg: EntropyCallbackData {
-                            original_sender: info.sender,
-                            game: idx,
-                        },
-                    }
-                    .into_cosmos(state.entropy_beacon_addr)?,
-                ))
+                .add_messages(msgs))
         }
         // Here we handle receiving entropy from the beacon.
         ExecuteMsg::ReceiveEntropy(data) => {
