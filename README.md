@@ -4,7 +4,7 @@ A slot-based minigame based on the Kujirans NFT collection, in order to demo the
 
 ## Mainnet
 
-Code id `40`
+Code id `41`
 
 ## Testnet
 

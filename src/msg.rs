@@ -9,7 +9,6 @@ pub struct InstantiateMsg {
     pub token: Denom,
     pub play_amount: Uint128,
     pub win_amount: Uint128,
-    #[serde(default)]
     pub fee_amount: Uint128,
 }
 

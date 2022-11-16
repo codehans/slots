@@ -12,7 +12,9 @@ use entropy_beacon_cosmos::EntropyRequest;
 use kujira::denom::Denom;
 
 use crate::error::ContractError;
-use crate::msg::{EntropyCallbackData, ExecuteMsg, GameResponse, InstantiateMsg, QueryMsg};
+use crate::msg::{
+    EntropyCallbackData, ExecuteMsg, GameResponse, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use crate::state::{State, STATE};
 
 #[cw_serde]
@@ -155,4 +157,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             })
         }
     }
+}
+
+#[entry_point]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+    let mut config = STATE.load(deps.storage)?;
+    config.fee_amount = msg.fee_amount;
+    STATE.save(deps.storage, &config)?;
+
+    Ok(Response::new())
 }
