@@ -6,6 +6,8 @@ A slot-based minigame based on the Kujirans NFT collection, in order to demo the
 
 Code id `41`
 
+Contract `kujira1rt0fzu0w32ymr6cxl4867rwqfaen6mmx2k2ulqna9zmc0ft2ye7qxeetxn`
+
 ## Testnet
 
 Code id `450`
